@@ -69,7 +69,8 @@ function implementXposedAPI(){
         console.log("[API Call] hookMethodNative", javaReflectedMethod.getDeclaringClass().getName(), javaReflectedMethod.getName())
         
         // 这里来的，可能是Method，也可能是Constructor
-        var refMethod = Java.use(javaReflectedMethod.getClass().getName())
+        // 在7.0里不能直接getClass，用$className替代
+        var refMethod = Java.use(javaReflectedMethod.$className)
         var method = Java.cast(javaReflectedMethod, refMethod)
                
         // 创建GlobalRef，不然再次调用时可能就是野指针了
@@ -81,7 +82,7 @@ function implementXposedAPI(){
         
         // Frida中Method Hook和Constructor Hook方式不同，所以要区分
         var clazz = method.getDeclaringClass().getName()
-        var mtdname = (javaReflectedMethod.getClass().getName()=="java.lang.reflect.Constructor")? "$init": method.getName()
+        var mtdname = (javaReflectedMethod.$className=="java.lang.reflect.Constructor")? "$init": method.getName()
         var overload = method.getParameterTypes().map(function(clz){return clz.getName()})
         
         var fridaMethod = Java.use(clazz)[mtdname].overload.apply(Java.use(clazz)[mtdname], overload)
@@ -143,14 +144,14 @@ function implementXposedAPI(){
     XposedBridge.invokeOriginalMethodNative.implementation = function(javaMethod, isResolved, jobjectArray, jclass, javaReceiver, javaArgs){
         console.log("[API Call] invokeOriginalMethodNative", javaMethod)
         
-        var refMethod = Java.use(javaMethod.getClass().getName())
+        var refMethod = Java.use(javaMethod.$className)
         var method = Java.cast(javaMethod, refMethod)
         var clazz = method.getDeclaringClass().getName()
         var mtdname = method.getName()
         var overload = method.getParameterTypes().map(function(clz){return clz.getName()})
         
         var fridaMethod = Java.use(clazz)[mtdname].overload.apply(Java.use(clazz)[mtdname], overload)
-        var thisObject = (fridaMethod.type == 3)?javaReceiver:Java.use(clazz)
+        var thisObject = (fridaMethod.type == 3)?Java.cast(javaReceiver, Java.use(clazz)):Java.use(clazz)
         
         var jarr = javaArgs
         // 不知道为什么结尾可能会多一个null，可能是ducktape问题？手动去掉。

@@ -8,6 +8,16 @@
     原理：通过Frida加载XposedBridge.jar，同时通过Frida Java Hook来实现Xposed API。随后模拟Xposed初始化，并加载插件，然后再模拟应用启动。
 */
 
+var typeTranslation = {
+    "Z":"java.lang.Boolean",
+    "B":"java.lang.Byte",
+    "S":"java.lang.Short",
+    "I":"java.lang.Integer",
+    "J":"java.lang.Long",
+    "F":"java.lang.Float",
+    "D":"java.lang.Double"
+}
+
 function implementXposedAPI(){
     // Implement ZygoteService API
     var ZygoteService = Java.classFactory.use("de.robv.android.xposed.services.ZygoteService")
@@ -98,8 +108,11 @@ function implementXposedAPI(){
             var jarr = Object.keys(arguments).map(function(key){return args[key]})
             
             fridaMethod.argumentTypes.forEach(function(type,index){
-                var env = Java.vm.getEnv()
-                jarr[index] = Java.classFactory._getType("java.lang.Object").fromJni(type.toJni(jarr[index], env),env, false)
+                if(type.type != "pointer")jarr[index] = Java.use(typeTranslation[type.name]).valueOf(jarr[index])
+                else{
+                    var env = Java.vm.getEnv()
+                    jarr[index] = Java.classFactory._getType("java.lang.Object").fromJni(type.toJni(jarr[index], env),env, false)
+                }
             })
             
             try{
@@ -158,8 +171,32 @@ function implementXposedAPI(){
         jarr = jarr.slice(0, javaArgs.length)
         
         fridaMethod.argumentTypes.forEach(function(type,index){
-            var env = Java.vm.getEnv()
-            jarr[index] = type.fromJni(Java.classFactory._getType("java.lang.Object").toJni(jarr[index], env), env, false)
+            if(type.type!="pointer"){
+                //console.log("CAST: ",JSON.stringify(Object.keys(jarr[index])))
+                var value
+                var basicObj = Java.cast(jarr[index],Java.use(typeTranslation[type.name]))
+                switch(type.name){
+                    case "Z":
+                        value = basicObj.booleanValue();
+                    case "B":
+                        value = basicObj.byteValue();
+                    case "S":
+                        value = basicObj.shortValue();
+                    case "I":
+                        value = basicObj.intValue();
+                    case "J":
+                        value = basicObj.longValue();
+                    case "F":
+                        value = basicObj.floatValue();
+                    case "D":
+                        value = basicObj.doubleValue();
+                }
+                jarr[index]=value
+            }else{
+                var env = Java.vm.getEnv()
+                jarr[index] = type.fromJni(Java.classFactory._getType("java.lang.Object").toJni(jarr[index], env), env, false)
+            }
+
         })
         
         var result = null

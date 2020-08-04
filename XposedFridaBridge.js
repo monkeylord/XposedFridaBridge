@@ -18,9 +18,11 @@ var typeTranslation = {
     "D":"java.lang.Double"
 }
 
+var XposedClassFactory = null
+
 function implementXposedAPI(){
     // Implement ZygoteService API
-    var ZygoteService = Java.classFactory.use("de.robv.android.xposed.services.ZygoteService")
+    var ZygoteService = XposedClassFactory.use("de.robv.android.xposed.services.ZygoteService")
     
     ZygoteService.checkFileAccess.implementation = function(){
         console.log("[API Call] checkFileAccess", " filename:", arguments[0])
@@ -38,7 +40,7 @@ function implementXposedAPI(){
     }
     
     // Implement XposedBridge API
-    var XposedBridge =  Java.classFactory.use("de.robv.android.xposed.XposedBridge")
+    var XposedBridge =  XposedClassFactory.use("de.robv.android.xposed.XposedBridge")
     XposedBridge.runtime.value = 2  // Art
     XposedBridge.hadInitErrors.implementation=function(){
         console.log("[API Call] hadInitErrors")
@@ -250,9 +252,11 @@ function FrameworkInit(bridgePath, xposedPath){
     console.log("[XposedFridaBridge] Current Application Classloader: ",apkClassloader)
     
     // 加载Xposed类
-    Java.openClassFile(bridgePath).load()
-
-    var XposedCL = Java.classFactory.loader
+    // Java.openClassFile(bridgePath).load()
+    var app = ActivityThread.currentApplication()
+    var DexClassLoader = Java.use("dalvik.system.DexClassLoader")
+    var XposedCL = DexClassLoader.$new(bridgePath, "/data/data/" + app.getPackageName() + "/code_cache", null, DexClassLoader.getSystemClassLoader());
+    XposedClassFactory = Java.ClassFactory.get(XposedCL)
     console.log("[XposedFridaBridge] Xposed Classloader: ", XposedCL)
 
     // 实现XposedBridge API
@@ -264,18 +268,18 @@ function FrameworkInit(bridgePath, xposedPath){
     console.log("[XposedFridaBridge] Initating Xposed Framework")
 
     // 模拟XposedBridge.main
-    var XposedBridge =  Java.classFactory.use("de.robv.android.xposed.XposedBridge")
+    var XposedBridge =  XposedClassFactory.use("de.robv.android.xposed.XposedBridge")
     // XposedBridge.initXResources()    //initXResource被放弃实现，转而通过对XposedBridge.jar二次打包实现，修改了android.content.res.XResource
     XposedBridge.XPOSED_BRIDGE_VERSION.value = 82
     XposedBridge.BOOTCLASSLOADER.value = XposedCL
     XposedBridge.isZygote.value = true
     
-    var XposedInit = Java.classFactory.use("de.robv.android.xposed.XposedInit")
+    var XposedInit = XposedClassFactory.use("de.robv.android.xposed.XposedInit")
     XposedInit.BASE_DIR.value = xposedPath
     console.log("[XposedFridaBridge] Static Attribute Set")
     
     console.log("[XposedFridaBridge] Initating SELinuxHelper")
-    var SELinuxHelper = Java.classFactory.use("de.robv.android.xposed.SELinuxHelper")
+    var SELinuxHelper = XposedClassFactory.use("de.robv.android.xposed.SELinuxHelper")
     SELinuxHelper.initOnce()
     SELinuxHelper.initForProcess(ActivityThread.currentApplication().getPackageName())
 
@@ -293,9 +297,9 @@ function FrameworkInit(bridgePath, xposedPath){
 
 function triggerLoadPackage(){
     
-    var XposedBridge =  Java.classFactory.use("de.robv.android.xposed.XposedBridge")
-    var XCallback = Java.classFactory.use("de.robv.android.xposed.callbacks.XCallback")
-    var LoadPackageParam = Java.classFactory.use("de.robv.android.xposed.callbacks.XC_LoadPackage$LoadPackageParam")
+    var XposedBridge =  XposedClassFactory.use("de.robv.android.xposed.XposedBridge")
+    var XCallback = XposedClassFactory.use("de.robv.android.xposed.callbacks.XCallback")
+    var LoadPackageParam = XposedClassFactory.use("de.robv.android.xposed.callbacks.XC_LoadPackage$LoadPackageParam")
     
     console.log("[XposedFridaBridge] Preparing LoadPackageParam")
     var ActivityThread = Java.use("android.app.ActivityThread")

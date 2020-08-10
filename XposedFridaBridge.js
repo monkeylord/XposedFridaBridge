@@ -126,7 +126,29 @@ function implementXposedAPI(){
                 var retType = fridaMethod._p[4]
                 var hhmRetType = XposedBridge.handleHookedMethod.overloads[0]._p[4]
                 
-                return retType.fromJni(hhmRetType.toJni(xposedResult, env), env, false)
+                if(retType.type != "pointer"){
+                    var value
+                    var basicObj = Java.cast(xposedResult,Java.use(typeTranslation[retType.name]))
+                    switch(retType.name){
+                        case "Z":
+                            value = basicObj.booleanValue();
+                        case "B":
+                            value = basicObj.byteValue();
+                        case "S":
+                            value = basicObj.shortValue();
+                        case "I":
+                            value = basicObj.intValue();
+                        case "J":
+                            value = basicObj.longValue();
+                        case "F":
+                            value = basicObj.floatValue();
+                        case "D":
+                            value = basicObj.doubleValue();
+                    }
+                    return value
+                }else{
+                    return retType.fromJni(hhmRetType.toJni(xposedResult, env), env, false)
+                }
             }catch(e){
                 console.log("Exception: ", e)
                 throw e
@@ -215,6 +237,8 @@ function implementXposedAPI(){
             var retType = fridaMethod._p[4]
             var iomnRetType = XposedBridge.invokeOriginalMethodNative.overloads[0]._p[4]
             
+            if(retType.type != "pointer")return Java.use(typeTranslation[retType.name]).valueOf(result)
+                
             var rawResult = retType.toJni(result, env)
             var tmpResult = iomnRetType.fromJni(rawResult, env, false)
             result = tmpResult

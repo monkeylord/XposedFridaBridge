@@ -126,6 +126,7 @@ function implementXposedAPI(){
                 var retType = fridaMethod._p[4]
                 var hhmRetType = XposedBridge.handleHookedMethod.overloads[0]._p[4]
                 
+                if(xposedResult==null)return null
                 if(retType.type != "pointer"){
                     var value
                     var basicObj = Java.cast(xposedResult,Java.use(typeTranslation[retType.name]))
@@ -279,7 +280,9 @@ function FrameworkInit(bridgePath, xposedPath){
     // Java.openClassFile(bridgePath).load()
     var app = ActivityThread.currentApplication()
     var DexClassLoader = Java.use("dalvik.system.DexClassLoader")
-    var XposedCL = DexClassLoader.$new(bridgePath, "/data/data/" + app.getPackageName() + "/code_cache", null, DexClassLoader.getSystemClassLoader());
+    var codeCacheDir = (app.getCodeCacheDir) ? app.getCodeCacheDir().toString() : "/data/data/" + app.getPackageName() + "/code_cache"
+    console.log("[XposedFridaBridge] Code Cache Directory: ", codeCacheDir)
+    var XposedCL = DexClassLoader.$new(bridgePath, codeCacheDir, null, DexClassLoader.getSystemClassLoader());
     XposedClassFactory = Java.ClassFactory.get(XposedCL)
     console.log("[XposedFridaBridge] Xposed Classloader: ", XposedCL)
 

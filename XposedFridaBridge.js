@@ -132,19 +132,19 @@ function implementXposedAPI(){
                     var basicObj = Java.cast(xposedResult,Java.use(typeTranslation[retType.name]))
                     switch(retType.name){
                         case "Z":
-                            value = basicObj.booleanValue();
+                            value = basicObj.booleanValue();break;
                         case "B":
-                            value = basicObj.byteValue();
+                            value = basicObj.byteValue();break;
                         case "S":
-                            value = basicObj.shortValue();
+                            value = basicObj.shortValue();break;
                         case "I":
-                            value = basicObj.intValue();
+                            value = basicObj.intValue();break;
                         case "J":
-                            value = basicObj.longValue();
+                            value = basicObj.longValue();break;
                         case "F":
-                            value = basicObj.floatValue();
+                            value = basicObj.floatValue();break;
                         case "D":
-                            value = basicObj.doubleValue();
+                            value = basicObj.doubleValue();break;
                     }
                     return value
                 }else{
@@ -202,19 +202,19 @@ function implementXposedAPI(){
                 var basicObj = Java.cast(jarr[index],Java.use(typeTranslation[type.name]))
                 switch(type.name){
                     case "Z":
-                        value = basicObj.booleanValue();
+                        value = basicObj.booleanValue();break;
                     case "B":
-                        value = basicObj.byteValue();
+                        value = basicObj.byteValue();break;
                     case "S":
-                        value = basicObj.shortValue();
+                        value = basicObj.shortValue();break;
                     case "I":
-                        value = basicObj.intValue();
+                        value = basicObj.intValue();break;
                     case "J":
-                        value = basicObj.longValue();
+                        value = basicObj.longValue();break;
                     case "F":
-                        value = basicObj.floatValue();
+                        value = basicObj.floatValue();break;
                     case "D":
-                        value = basicObj.doubleValue();
+                        value = basicObj.doubleValue();break;
                 }
                 jarr[index]=value
             }else{
@@ -359,27 +359,54 @@ function triggerLoadPackage(){
 }
 
 // 启动
-Java.performNow(function(){
-    // Java.deoptimizeEverything()
-    console.log("Xposed Frida Bridge\n by Monkeylord\n")
-    
-    console.log("XposedBridge.jar Path:", "/data/local/tmp/XposedBridge.jar")
-    console.log("modules.list Path:", "/data/local/tmp/conf/modules.list")
-    console.log("\n")
-    
-    console.log("[XposedFridaBridge] Start Loading Xposed")
-    
-    // 获取当前应用Application
-    var ActivityThread = Java.use("android.app.ActivityThread")
-    var app = ActivityThread.currentApplication()
-    
-    // 初始化Framework
-    console.log("[XposedFridaBridge] Current Application: ", app.getPackageName())
-    FrameworkInit("/data/local/tmp/XposedBridge.jar", "/data/local/tmp/")
+function startBridge(){
+    Java.performNow(function(){
+        // Java.deoptimizeEverything()
+        console.log("Xposed Frida Bridge\n by Monkeylord\n")
         
-    // 触发模块启动
-    console.log("[XposedFridaBridge] Triggering Modules Load")
-    triggerLoadPackage()
-    
-    console.log("[XposedFridaBridge] Ready\n")
-})
+        console.log("XposedBridge.jar Path:", "/data/local/tmp/XposedBridge.jar")
+        console.log("modules.list Path:", "/data/local/tmp/conf/modules.list")
+        console.log("\n")
+        
+        console.log("[XposedFridaBridge] Start Loading Xposed")
+        
+        // 获取当前应用Application
+        var ActivityThread = Java.use("android.app.ActivityThread")
+        var app = ActivityThread.currentApplication()
+        
+        if(app!=null){
+            // 当前应用已加载，直接加载
+            // 初始化Framework
+            console.log("[XposedFridaBridge] Current Application: ", app.getPackageName())
+            FrameworkInit("/data/local/tmp/XposedBridge.jar", "/data/local/tmp/")
+                
+            // 触发模块启动
+            console.log("[XposedFridaBridge] Triggering Modules Load")
+            triggerLoadPackage()
+            
+            console.log("[XposedFridaBridge] Ready\n")
+        }else{
+            // Spawn方式启动，等待应用加载
+            ActivityThread.handleBindApplication.implementation = function(appInfo){
+                // 注意：此处和Xposed加载顺序不同，Xposed在handleBindApplication前初始化模块
+                // 但由于目前实现需要其中的currentApplication，便利起见，在之后初始化模块
+                // TODO 使用其他方式替代currentApplication
+                this.handleBindApplication()
+                // 特定位置初始化Framework
+                app = ActivityThread.currentApplication()
+                console.log("[XposedFridaBridge] Current Application: ", app.getPackageName())
+                FrameworkInit("/data/local/tmp/XposedBridge.jar", "/data/local/tmp/")
+                    
+                // 触发模块启动
+                console.log("[XposedFridaBridge] Triggering Modules Load")
+                triggerLoadPackage()
+                
+                console.log("[XposedFridaBridge] Ready\n")
+            }
+        }
+        
+
+    })
+}
+
+setTimeout(startBridge, 10)

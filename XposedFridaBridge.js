@@ -387,6 +387,7 @@ function startBridge(){
             console.log("[XposedFridaBridge] Ready\n")
         }else{
             // Spawn方式启动，等待应用加载
+            console.log("[XposedFridaBridge] Application has not initialized, waiting.")
             ActivityThread.handleBindApplication.implementation = function(appInfo){
                 // 注意：此处和Xposed加载顺序不同，Xposed在handleBindApplication前初始化模块
                 // 但由于目前实现需要其中的currentApplication，便利起见，在之后初始化模块

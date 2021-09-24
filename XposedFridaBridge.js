@@ -86,9 +86,11 @@ function implementXposedAPI(){
         var method = Java.cast(javaReflectedMethod, refMethod)
                
         // 创建GlobalRef，不然再次调用时可能就是野指针了
-        javaReflectedMethod.$h = Java.vm.getEnv().newGlobalRef(javaReflectedMethod.$h)
-        javaAdditionalInfo.$h = Java.vm.getEnv().newGlobalRef(javaAdditionalInfo.$h)
+        //javaReflectedMethod.$h = Java.vm.getEnv().newGlobalRef(javaReflectedMethod.$h)
+        //javaAdditionalInfo.$h = Java.vm.getEnv().newGlobalRef(javaAdditionalInfo.$h)
         
+		javaReflectedMethod = Java.retain(javaReflectedMethod)
+		javaAdditionalInfo = Java.retain(javaAdditionalInfo)
         
         // 拿基本信息
         
@@ -108,7 +110,6 @@ function implementXposedAPI(){
             
             var args = arguments
             var jarr = Object.keys(arguments).map(function(key){return args[key]})
-            
             fridaMethod.argumentTypes.forEach(function(type,index){
                 if(type.type != "pointer")jarr[index] = Java.use(typeTranslation[type.name]).valueOf(jarr[index])
                 else{
@@ -116,9 +117,8 @@ function implementXposedAPI(){
                     jarr[index] = Java.classFactory._getType("java.lang.Object").fromJni(type.toJni(jarr[index], env),env, false)
                 }
             })
-            
             try{
-                var xposedResult = XposedBridge.handleHookedMethod(javaReflectedMethod, jint, javaAdditionalInfo, thisObject, Java.array("java.lang.Object", jarr))
+                var xposedResult = XposedBridge.handleHookedMethod(javaReflectedMethod, jint, javaAdditionalInfo, thisObject, Java.array("Ljava.lang.Object;", jarr))
                 /*
                     Frida-java在这里有Bug，手动解决数组对象问题
                 */

@@ -152,7 +152,7 @@ function implementXposedAPI(){
                 }
             }catch(e){
                 console.log("Exception: ", e)
-                throw e
+                //throw e
             }
         }
     }
